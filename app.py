@@ -78,10 +78,7 @@ if st.button("SEND COMMAND") and user_prompt:
         st.stop()
 
     client = Groq(api_key=api_key)
-    response = client.chat.completions.create(
-        model="llama-3.2-11b-vision-preview",
-        messages=st.session_state.messages
-    )
+   response = client.chat.completions.create(model="llama-3.1-8b-instant",messages=st.session_state.messages)
     
     reply = response.choices[0].message.content
     st.session_state.messages.append({"role": "assistant", "content": reply})
