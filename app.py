@@ -4,77 +4,125 @@ import streamlit as st
 from groq import Groq
 import edge_tts
 
-# Page Configuration
-st.set_page_config(page_title="JARVIS MARK II", page_icon="⚡", layout="centered")
+# ---------------------------------------------------------
+# 1. PAGE CONFIGURATION & STARK HUD STYLING
+# ---------------------------------------------------------
+st.set_page_config(
+    page_title="J.A.R.V.I.S. MARK II",
+    page_icon="⚡",
+    layout="centered"
+)
 
-# Security Passcode Check
+# Stark Industries Custom UI Styling
+st.markdown("""
+    <style>
+    .main {
+        background-color: #0e1117;
+        color: #00e5ff;
+    }
+    .stTextInput > div > div > input {
+        background-color: #161b22;
+        color: #00e5ff;
+        border: 1px solid #00e5ff;
+    }
+    .stButton > button {
+        background-color: #00e5ff;
+        color: #0e1117;
+        font-weight: bold;
+        border-radius: 5px;
+        border: none;
+    }
+    .stButton > button:hover {
+        background-color: #ff0055;
+        color: #ffffff;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 2. SECURITY PROTOCOL (PASSCODE AUTHENTICATION)
+# ---------------------------------------------------------
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.title("🔒 J.A.R.V.I.S. Security Protocol")
+    st.title("🔒 J.A.R.V.I.S. SECURITY PROTOCOL")
+    st.subheader("Authentication Required")
+    
     passcode = st.text_input("Enter Access Passcode:", type="password")
     if st.button("AUTHENTICATE"):
         if passcode == "StarkProtocol99":
             st.session_state.authenticated = True
-            st.success("Access Granted. Welcome, Sir.")
+            st.success("Access Granted. Welcome back, Sir.")
             st.rerun()
         else:
-            st.error("Access Denied: Invalid Passcode.")
+            st.error("Access Denied: Invalid Security Clearance.")
     st.stop()
 
-# Initialize Chat Messages State
+# ---------------------------------------------------------
+# 3. INITIALIZE SYSTEM MEMORY & GROQ CLIENT
+# ---------------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "system", "content": "You are J.A.R.V.I.S., Tony Stark's AI assistant. Respond politely, efficiently, and refer to the user as Sir."}
+        {
+            "role": "system",
+            "content": "You are J.A.R.V.I.S., Tony Stark's highly intelligent AI assistant. Respond efficiently, maintain a suave and loyal personality, and always address the user as Sir."
+        }
     ]
 
-# Function for Voice Generation via edge-tts
-async def generate_speech(text, output_file="response.mp3"):
+# Async Function for Voice Generation (Edge-TTS)
+async def generate_speech(text, output_file="jarvis_voice.mp3"):
     communicate = edge_tts.Communicate(text, "en-IN-PrabhatNeural")
     await communicate.save(output_file)
     return output_file
 
-# Main HUD Interface
+# ---------------------------------------------------------
+# 4. MAIN HUD INTERFACE & CHAT DISPLAY
+# ---------------------------------------------------------
 st.title("⚡ J.A.R.V.I.S. MARK II HUD")
+st.caption("STARK INDUSTRIES INTEGRATED INTELLIGENCE SYSTEM")
 
-# Display Previous Conversation
+# Display Conversation History
 for message in st.session_state.messages:
     if message["role"] != "system":
         with st.chat_message(message["role"]):
             st.write(message["content"])
 
-# User Input Form
-with st.form(key="command_form", clear_on_submit=True):
-    user_prompt = st.text_input("Execute Command:", key="user_input")
-    submit_button = st.form_submit_button(label="SEND COMMAND")
+# ---------------------------------------------------------
+# 5. USER COMMAND EXECUTION
+# ---------------------------------------------------------
+user_prompt = st.chat_input("Execute Command, Sir...")
 
-if submit_button and user_prompt:
-    # Append User Message
+if user_prompt:
+    # Append User Input
     st.session_state.messages.append({"role": "user", "content": user_prompt})
+    with st.chat_message("user"):
+        st.write(user_prompt)
 
-    # Groq API Call
+    # Fetch Groq API Key
     api_key = os.environ.get("GROQ_API_KEY", "")
     if not api_key:
-        st.error("System Error: GROQ_API_KEY Missing in Streamlit Secrets.")
+        st.error("System Failure: GROQ_API_KEY environment variable missing.")
         st.stop()
 
     client = Groq(api_key=api_key)
-    
-    with st.spinner("J.A.R.V.I.S. is processing..."):
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=st.session_state.messages
-        )
-        reply = response.choices[0].message.content
-        st.session_state.messages.append({"role": "assistant", "content": reply})
 
-        # Generate Audio
-        audio_file = asyncio.run(generate_speech(reply))
+    # Generate Response from Groq
+    with st.chat_message("assistant"):
+        with st.spinner("Analyzing command..."):
+            try:
+                response = client.chat.completions.create(
+                    model="llama-3.1-8b-instant",
+                    messages=st.session_state.messages
+                )
+                reply = response.choices[0].message.content
+                st.write(reply)
+                st.session_state.messages.append({"role": "assistant", "content": reply})
 
-    # Refresh UI to show response
-    st.rerun()
+                # Generate Voice Response
+                asyncio.run(generate_speech(reply))
+                if os.path.exists("jarvis_voice.mp3"):
+                    st.audio("jarvis_voice.mp3", format="audio/mp3", autoplay=True)
 
-# Play audio for the latest assistant message if available
-if os.path.exists("response.mp3"):
-    st.audio("response.mp3", format="audio/mp3", autoplay=True)
+            except Exception as e:
+                st.error(f"System Error: {str(e)}")
