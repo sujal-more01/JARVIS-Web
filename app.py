@@ -112,7 +112,7 @@ if user_prompt:
         with st.spinner("Analyzing command..."):
             try:
                 response = client.chat.completions.create(
-                    model="qwen/qwen3.6-27b",
+                    model="openai/gpt-oss-20b",
                     messages=st.session_state.messages
                 )
                 reply = response.choices[0].message.content
