@@ -112,7 +112,7 @@ if user_prompt:
         with st.spinner("Analyzing command..."):
             try:
                 response = client.chat.completions.create(
-                    model="llama3-8b-8192",
+                    model="qwen/qwen3.6-27b",
                     messages=st.session_state.messages
                 )
                 reply = response.choices[0].message.content
